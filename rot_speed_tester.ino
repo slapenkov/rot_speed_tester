@@ -24,7 +24,8 @@
 
 // include the library code:
 #include <LiquidCrystal.h>
-#include <RotaryEncoder.h>
+#include <RotaryEncoderAdvanced.h>
+#include <RotaryEncoderAdvanced.cpp> //for some reason linker can't find the *.cpp :(
 
 
 // initialize the library by associating any needed LCD interface pin
@@ -39,7 +40,8 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 uint16_t buttonCounter = 0;
 
-RotaryEncoder     encoder(PIN_A, PIN_B, BUTTON);
+
+RotaryEncoderAdvanced<float> encoder(PIN_A, PIN_B, BUTTON, 0.1, 0.0, 3.3);                         //0.1 step per click, minimum value 0, maximum value 3.3
 
 void encoderISR()
 {
@@ -65,7 +67,7 @@ void setup() {
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   // Print a message to the LCD.
-  lcd.print("hello, world!");
+  lcd.print(F("hello, world!"));
 }
 
 // the loop function runs over and over again forever
@@ -74,11 +76,11 @@ void loop() {
   // (note: line 1 is the second row, since counting begins with 0):
   lcd.setCursor(0, 1);
   // print the number of seconds since reset:
-  lcd.print(encoder.getPosition());
+  lcd.print(encoder.getValue());
   lcd.setCursor(10, 1);
-  lcd.print(buttonCounter++);
+  lcd.print(encoder.getPushButton());
   digitalWrite(PC13, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);              // wait for a second
+  delay(100);              // wait for a second
   digitalWrite(PC13, LOW);    // turn the LED off by making the voltage LOW
   delay(100);              // wait for a second
 }
