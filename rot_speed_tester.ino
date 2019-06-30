@@ -44,11 +44,8 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7); //LCD instance
 #define TIMER3_CH1_PIN PA6
 #define TIMER4_CH1_PIN PB6
 
-#define PRES_FACTOR 1600
+#define PRES_FACTOR 1794
 #define BASE_PERIOD 40000
-
-uint16_t buttonCounter = 0;
-int val = 0;
 
 RotaryEncoderAdvanced<float> encoder(PIN_A, PIN_B, BUTTON, 1.0, 1.0, 300.0);                         //0.1 step per click, minimum value 0, maximum value 3.3
 
@@ -57,7 +54,7 @@ HardwareTimer pwmtimer2(2);
 HardwareTimer pwmtimer3(3);
 HardwareTimer pwmtimer4(4);
 
-volatile float freqCh1 = 1.0, freqCh2 = 2.0, freqCh3 = 3.0, freqCh4 = 4.0;
+volatile float freqCh1 = 1.0, freqCh2 = 10.0, freqCh3 = 50.0, freqCh4 = 100.0;
 
 bool channelSelection = 1;
 int currentChannel = 0;
@@ -74,22 +71,26 @@ void encoderButtonISR()
   encoder.readPushButton();
 }
 
-void setFrequency(HardwareTimer *timer, float frequency) {
+void setFrequency(int channelNumber, float frequency) {
   if (frequency > 0) {
     int val = int(BASE_PERIOD / frequency);
-    timer->setOverflow(val);
-    //pwmWrite(TIMER1_CH1_PIN, val / 2);
-    if (timer == &pwmtimer1) {
-      pwmWrite(TIMER1_CH1_PIN, val / 2);
-    } else if (timer == &pwmtimer2) {
-      pwmWrite(TIMER2_CH1_PIN, val / 2);
-    } else if (timer == &pwmtimer3) {
-      pwmWrite(TIMER3_CH1_PIN, val / 2);
-    } else if (timer == &pwmtimer4) {
-      pwmWrite(TIMER4_CH1_PIN, val / 2);
-    } else {
-      lcd.setCursor(0, 0);
-      lcd.print("Error!");
+    switch (channelNumber) {
+      case 1:
+        pwmtimer1.setOverflow(val);
+        pwmWrite(TIMER1_CH1_PIN, val / 2);
+        break;
+      case 2:
+        pwmtimer2.setOverflow(val);
+        pwmWrite(TIMER2_CH1_PIN, val / 2);
+        break;
+      case 3:
+        pwmtimer3.setOverflow(val);
+        pwmWrite(TIMER3_CH1_PIN, val / 2);
+        break;
+      case 4:
+        pwmtimer4.setOverflow(val);
+        pwmWrite(TIMER4_CH1_PIN, val / 2);
+        break;
     }
   }
 }
@@ -207,6 +208,12 @@ void setup() {
   // initialize digital pin PB1 as an output. - status
   pinMode(PC13, OUTPUT);
 
+  setFrequency(1, freqCh1);
+  setFrequency(2, freqCh2);
+  setFrequency(3, freqCh3);
+  setFrequency(4, freqCh4);
+
+
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   lcd.cursor();
@@ -224,7 +231,7 @@ void loop() {
     currentChannel = int(encoder.getValue() - 1) % 4;
     if (encoder.getPushButton()) {
       channelSelection = 0;
-      switch (currentChannel) {
+      switch (currentChannel) { //restore channel freq value
         case 0:
           encoder.setValue(freqCh1);
           break;
@@ -244,19 +251,19 @@ void loop() {
     switch (currentChannel) {
       case 0:
         freqCh1 = encoder.getValue();
-        setFrequency(&pwmtimer1, freqCh1);
+        setFrequency(1, freqCh1);
         break;
       case 1:
         freqCh2 = encoder.getValue();
-        setFrequency(&pwmtimer2, freqCh2);
+        setFrequency(2, freqCh2);
         break;
       case 2:
         freqCh3 = encoder.getValue();
-        setFrequency(&pwmtimer3, freqCh3);
+        setFrequency(3, freqCh3);
         break;
       case 3:
         freqCh4 = encoder.getValue();
-        setFrequency(&pwmtimer4, freqCh4);
+        setFrequency(4, freqCh4);
         break;
     }
     if (encoder.getPushButton()) {
@@ -265,9 +272,8 @@ void loop() {
     }
   }
 
-
-digitalWrite(PC13, HIGH);   // turn the LED on (HIGH is the voltage level)
-delay(100);              // wait for a second
-digitalWrite(PC13, LOW);    // turn the LED off by making the voltage LOW
-delay(100);              // wait for a second
+  digitalWrite(PC13, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(10);              // wait for
+  digitalWrite(PC13, LOW);    // turn the LED off by making the voltage LOW
+  delay(200);              // wait for
 }
