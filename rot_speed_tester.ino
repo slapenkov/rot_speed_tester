@@ -23,6 +23,7 @@
 */
 
 // include the library code:
+#include <stdio.h>
 #include <LiquidCrystal.h>
 #include <RotaryEncoderAdvanced.h>
 #include <RotaryEncoderAdvanced.cpp> //for some reason linker can't find the *.cpp :(
@@ -58,6 +59,9 @@ HardwareTimer pwmtimer4(4);
 
 volatile float freqCh1 = 1.0, freqCh2 = 2.0, freqCh3 = 3.0, freqCh4 = 4.0;
 
+bool channelSelection = 1;
+int currentChannel = 0;
+
 
 //ISR's
 void encoderISR()
@@ -86,9 +90,68 @@ void setFrequency(HardwareTimer *timer, float frequency) {
     } else {
       lcd.setCursor(0, 0);
       lcd.print("Error!");
-    };
+    }
   }
 }
+
+void updateMainCursor(void) {
+  int offset = 0;
+  if (channelSelection) {
+    offset = 0;
+  } else offset = 6;
+
+  switch (currentChannel) {
+    case 0:
+      lcd.setCursor(0 + offset, 0);
+      break;
+    case 1:
+      lcd.setCursor(8 + offset, 0);
+      break;
+    case 2:
+      lcd.setCursor(0 + offset, 1);
+      break;
+    case 3:
+      lcd.setCursor(8 + offset, 1);
+      break;
+  }
+}
+
+void updateMainScreen(void) {
+  String message;
+  char str[8];
+
+  //first channel
+  lcd.setCursor(0, 0);
+  dtostrf(freqCh1, 3, 0, str);
+  message = String(str);
+  message = String(" F1:" + message);
+  lcd.print(message);
+
+  //second channel
+  lcd.setCursor(8, 0);
+  dtostrf(freqCh2, 3, 0, str);
+  message = String(str);
+  message = String(" F2:" + message);
+  lcd.print(message);
+
+  //third channel
+  lcd.setCursor(0, 1);
+  dtostrf(freqCh3, 3, 0, str);
+  message = String(str);
+  message = String(" F3:" + message);
+  lcd.print(message);
+
+  //fourth channel
+  lcd.setCursor(8, 1);
+  dtostrf(freqCh4, 3, 0, str);
+  message = String(str);
+  message = String(" F4:" + message);
+  lcd.print(message);
+
+  updateMainCursor();
+
+}
+
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -146,25 +209,65 @@ void setup() {
 
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
+  lcd.cursor();
+  lcd.blink();
   // Print a message to the LCD.
-  lcd.print(F("hello, world!"));
+  updateMainScreen();
 }
 
 // the loop function runs over and over again forever
 void loop() {
-  val = int(BASE_PERIOD / encoder.getValue());
-  // set the cursor to column 0, line 1
-  // (note: line 1 is the second row, since counting begins with 0):
-  lcd.setCursor(0, 1);
-  // print the number of seconds since reset:
-  lcd.print(encoder.getValue());
-  lcd.setCursor(10, 1);
-  lcd.print(val);
-  //  pwmtimer1.setOverflow(val);
-  //  pwmWrite(TIMER1_CH1_PIN, val / 2);
-  setFrequency(&pwmtimer1, 100.0);
-  //  digitalWrite(PC13, HIGH);   // turn the LED on (HIGH is the voltage level)
-  //  delay(100);              // wait for a second
-  //  digitalWrite(PC13, LOW);    // turn the LED off by making the voltage LOW
-  //  delay(100);              // wait for a second
+  updateMainScreen();
+
+  //select rotary action
+  if (channelSelection) {
+    currentChannel = int(encoder.getValue() - 1) % 4;
+    if (encoder.getPushButton()) {
+      channelSelection = 0;
+      switch (currentChannel) {
+        case 0:
+          encoder.setValue(freqCh1);
+          break;
+        case 1:
+          encoder.setValue(freqCh2);
+          break;
+        case 2:
+          encoder.setValue(freqCh3);
+          break;
+        case 3:
+          encoder.setValue(freqCh4);
+          break;
+      }
+    }
+  }
+  else {
+    switch (currentChannel) {
+      case 0:
+        freqCh1 = encoder.getValue();
+        setFrequency(&pwmtimer1, freqCh1);
+        break;
+      case 1:
+        freqCh2 = encoder.getValue();
+        setFrequency(&pwmtimer2, freqCh2);
+        break;
+      case 2:
+        freqCh3 = encoder.getValue();
+        setFrequency(&pwmtimer3, freqCh3);
+        break;
+      case 3:
+        freqCh4 = encoder.getValue();
+        setFrequency(&pwmtimer4, freqCh4);
+        break;
+    }
+    if (encoder.getPushButton()) {
+      channelSelection = 1;
+      encoder.setValue(currentChannel + 1); //restore current channel val
+    }
+  }
+
+
+digitalWrite(PC13, HIGH);   // turn the LED on (HIGH is the voltage level)
+delay(100);              // wait for a second
+digitalWrite(PC13, LOW);    // turn the LED off by making the voltage LOW
+delay(100);              // wait for a second
 }
